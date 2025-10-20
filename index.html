@@ -29,10 +29,10 @@
         </header>
 
         <!-- Sección de Estadísticas y Gráficos -->
-        <div class="grid grid-cols-1 lg:col-span-3 gap-6 mb-8">
+        <div class="grid grid-cols-1 gap-6 mb-8">  <!-- CAMBIO: Siempre 1 columna, uno debajo del otro -->
 
             <!-- Card: Resumen de Progreso -->
-            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg border-t-4 border-blue-500">
+            <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-blue-500">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">Resumen General</h2>
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                     <div class="mb-4 md:mb-0">
@@ -62,6 +62,13 @@
             <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-teal-500 flex justify-center items-center">
                 <div class="w-full h-64">
                     <canvas id="membersChart"></canvas>
+                </div>
+            </div>
+
+            <!-- NUEVO: Card: Gráfico de Porcentaje por Departamentos -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-purple-500 flex justify-center items-center">
+                <div class="w-full h-64">
+                    <canvas id="departmentChart"></canvas>
                 </div>
             </div>
 
@@ -132,7 +139,7 @@
         // Almacena los datos completos de los Integrantes para el filtrado en memoria
         let membersData = [];
         let membersChartInstance = null;
-
+        let departmentChartInstance = null;  // NUEVO: Instancia para el gráfico de departamentos
 
         // Función simple para parsear datos CSV (saltándose la primera fila/cabecera)
         function parseCSV(csvText) {
@@ -186,7 +193,6 @@
             throw new Error("Máximo de reintentos alcanzado. Fallo en la conexión de red.");
         }
 
-
         // Función auxiliar para mostrar errores
         function displayError(message) {
             document.getElementById('loading').classList.add('hidden');
@@ -201,7 +207,8 @@
             
             console.error(`ERROR DE CONEXIÓN O PROCESAMIENTO: ${message}`);
         }
-// Función para calcular las estadísticas por departamento (NUEVO)
+
+        // Función para calcular las estadísticas por departamento
         function calculateDepartmentStats(data) {
             const deptMap = {};
 
@@ -260,7 +267,7 @@
             return results;
         }
 
-        // Función para inicializar el gráfico de porcentaje de departamentos (NUEVO)
+        // Función para inicializar el gráfico de porcentaje de departamentos
         function initDepartmentChart(deptStats) {
             const ctx = document.getElementById('departmentChart').getContext('2d');
             
@@ -280,7 +287,7 @@
                         borderWidth: 1
                     }]
                 },
-                plugins: [ChartDataLabels], // AÑADIDO: Registrar el plugin de datalabels
+                plugins: [ChartDataLabels], // Registrar el plugin de datalabels
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -304,7 +311,7 @@
                         legend: {
                             display: false
                         },
-                        // AÑADIDO: Configuración de datalabels para mostrar el porcentaje sobre la barra
+                        // Configuración de datalabels para mostrar el porcentaje sobre la barra
                         datalabels: {
                             anchor: 'end',
                             align: 'top',
@@ -335,6 +342,7 @@
                 }
             });
         }
+
         // Función para inicializar el gráfico de Integrantes
         function initChart(paidCount, totalCount) {
             const ctx = document.getElementById('membersChart').getContext('2d');
@@ -361,167 +369,4 @@
                         legend: {
                             position: 'top',
                             labels: {
-                                color: '#4B5563',
-                                font: {
-                                    size: 14
-                                }
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: `Estado de Pagos (${totalCount} Integrantes)`,
-                            font: {
-                                size: 18,
-                                weight: 'bold'
-                            },
-                            color: '#1F2937'
-                        }
-                    }
-                }
-            });
-        }
-
-        // Función para renderizar la tabla con los datos filtrados/completos
-        function renderTable(data) {
-            let memberListHTML = '';
-            const memberListElement = document.getElementById('memberList');
-            
-            if (data.length === 0) {
-                memberListElement.innerHTML = `
-                    <tr>
-                        <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">
-                            No se encontraron Integrantes que coincidan con los filtros o no se encontraron datos válidos.
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-
-            data.forEach((member, index) => {
-                const badgeClass = member.pagado 
-                    ? 'bg-green-100 text-green-800' // Pagado (Verde)
-                    : 'bg-red-100 text-red-800';   // Pendiente (Rojo)
-                const badgeText = member.pagado ? 'Pagado' : 'Pendiente';
-
-                memberListHTML += `
-                    <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${member.nombre}</td>
-
-                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
-                            <!-- Badge Redondeado con el estado -->
-                            <span class="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-semibold ${badgeClass}">
-                                ${badgeText}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
-                            $${member.monto.toFixed(2)}
-                        </td>
-                    </tr>
-                `;
-            });
-            memberListElement.innerHTML = memberListHTML;
-        }
-
-        // Función para filtrar los datos de los Integrantes
-        function filterTable() {
-            const filterNombre = document.getElementById('filterNombre').value.toLowerCase();
-
-            
-            // MODIFICACIÓN: Obtener el valor seleccionado del dropdown (all, paid, pending)
-            const filterStatus = document.getElementById('filterStatus').value; 
-
-            const filteredData = membersData.filter(member => {
-                const matchesNombre = member.nombre.toLowerCase().includes(filterNombre);
-
-
-                let matchesStatus = true;
-                
-                // Aplicar el filtro según el estado seleccionado en el dropdown
-                if (filterStatus === 'paid') {
-                    matchesStatus = member.pagado; // Solo mostrar Pagados (true)
-                } else if (filterStatus === 'pending') {
-                    matchesStatus = !member.pagado; // Solo mostrar Pendientes (false)
-                }
-                // Si es 'all', matchesStatus se mantiene en true, mostrando todos
-
-                return matchesNombre && matchesStatus;
-            });
-
-            renderTable(filteredData);
-        }
-
-
-        // Función principal para cargar datos y renderizar
-        async function fetchDataAndRender() {
-            document.getElementById('detailedErrorPanel').classList.add('hidden');
-            document.getElementById('loading').classList.remove('hidden');
-            
-            try {
-                // 1. Obtener los datos CSV
-                const response = await retryFetch(CSV_URL);
-                const csvText = await response.text();
-
-                // 2. Parsear los datos CSV a la estructura de Integrantes
-                membersData = parseCSV(csvText);
-
-                if (membersData.length === 0) {
-                     throw new Error("No se pudo parsear datos o la hoja está vacía. Verifique la estructura de columnas.");
-                }
-
-                // 3. Calcular totales
-                let paidMembersCount = 0;
-                let totalCollected = 0;
-                const totalMembers = membersData.length;
-                
-                // CÁLCULO DINÁMICO del total esperado
-                const expectedTotalCalculated = totalMembers * COST_PER_MEMBER;
-
-                membersData.forEach((member) => {
-                    totalCollected += member.monto;
-                    if (member.pagado) {
-                        paidMembersCount++;
-                    }
-                });
-
-                // Cálculos finales y actualización de la UI
-                const pendingMembersCount = totalMembers - paidMembersCount;
-                // Usar el total esperado calculado para el progreso
-                const collectionProgress = (totalCollected / expectedTotalCalculated) * 100;
-                
-                // 4. Actualizar Estadísticas
-                // El monto esperado se actualiza con el valor calculado
-                document.getElementById('expectedTotal').textContent = `$${expectedTotalCalculated.toFixed(2)}`;
-                document.getElementById('collectedTotal').textContent = `$${totalCollected.toFixed(2)}`;
-                document.getElementById('pendingMembers').textContent = pendingMembersCount;
-                
-                // 5. Actualizar Barra de Progreso
-                const progressBar = document.getElementById('progressBar');
-                progressBar.style.width = `${Math.min(collectionProgress, 100).toFixed(0)}%`;
-                progressBar.className = `bg-blue-600 h-4 rounded-full transition-all duration-700 ${collectionProgress >= 100 ? 'bg-green-600' : 'bg-blue-600'}`;
-                // El porcentaje de progreso también usa el total esperado calculado
-                document.getElementById('progressPercent').textContent = `${collectionProgress.toFixed(2)}% de $${expectedTotalCalculated.toFixed(2)}`;
-                
-                // 6. Renderizar Gráfico
-                initChart(paidMembersCount, totalMembers);
-
-                // 7. Renderizar Lista de Integrantes (Usando la data completa inicialmente)
-                renderTable(membersData);
-
-                document.getElementById('loading').classList.add('hidden');
-
-            } catch (error) {
-                displayError(`Error al obtener o procesar datos CSV: ${error.message}`);
-            }
-        }
-
-        // Hacemos la función filterTable accesible globalmente
-        window.filterTable = filterTable; 
-
-        // Ejecutar la función al cargar la ventana
-        window.onload = fetchDataAndRender;
-    </script>
-</body>
-</html>
-
-
-
+                                color: '#
