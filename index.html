@@ -73,7 +73,7 @@
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Depto.</th>
+
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Pagado</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
                         </tr>
@@ -82,9 +82,7 @@
                             <th class="p-2">
                                 <input type="text" id="filterNombre" onkeyup="filterTable()" placeholder="Filtrar nombre" class="w-full p-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
                             </th>
-                            <th class="p-2">
-                                <input type="text" id="filterDept" onkeyup="filterTable()" placeholder="Filtrar depto." class="w-full p-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
-                            </th>
+
                             <th class="p-2 flex justify-center items-center h-full">
                                 <!-- SELECT para filtrar por estado de pago (Todos/Pagado/Pendiente) -->
                                 <select id="filterStatus" onchange="filterTable()" class="w-full p-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
@@ -273,7 +271,7 @@
                 memberListHTML += `
                     <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100">
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${member.nombre}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${member.dept}</td>
+
                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
                             <!-- Badge Redondeado con el estado -->
                             <span class="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-semibold ${badgeClass}">
@@ -292,14 +290,14 @@
         // Función para filtrar los datos de los Integrantes
         function filterTable() {
             const filterNombre = document.getElementById('filterNombre').value.toLowerCase();
-            const filterDept = document.getElementById('filterDept').value.toLowerCase();
+
             
             // MODIFICACIÓN: Obtener el valor seleccionado del dropdown (all, paid, pending)
             const filterStatus = document.getElementById('filterStatus').value; 
 
             const filteredData = membersData.filter(member => {
                 const matchesNombre = member.nombre.toLowerCase().includes(filterNombre);
-                const matchesDept = member.dept.toLowerCase().includes(filterDept);
+
 
                 let matchesStatus = true;
                 
@@ -311,7 +309,7 @@
                 }
                 // Si es 'all', matchesStatus se mantiene en true, mostrando todos
 
-                return matchesNombre && matchesDept && matchesStatus;
+                return matchesNombre && matchesStatus;
             });
 
             renderTable(filteredData);
@@ -389,4 +387,5 @@
     </script>
 </body>
 </html>
+
 
