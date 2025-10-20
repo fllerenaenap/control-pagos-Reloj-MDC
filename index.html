@@ -32,8 +32,8 @@
             <div id="loading" class="mt-4 text-blue-500 font-semibold">Cargando datos...</div>
         </header>
 
-        <!-- Sección de Estadísticas y Gráficos -->
-        <div class="grid grid-cols-1 md:grid-cols-1 gap-6 mb-8">
+        <!-- Sección de Estadísticas y Gráficos (Una sola columna) -->
+        <div class="grid grid-cols-1 gap-6 mb-8">
              <!-- Card: Resumen de Progreso -->
             <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-blue-500">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">Resumen General</h2>
@@ -68,8 +68,8 @@
                 </div>
             </div>
 
-            <!-- NUEVO: Card: Gráfico de Porcentaje por Departamentos (Barra) -->
-            <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-purple-500 md:col-span-1 flex justify-center items-center">
+            <!-- Card: Gráfico de Porcentaje por Departamentos (Barra) -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-purple-500 flex justify-center items-center">
                 <div class="w-full h-80">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Progreso de Pago por Departamento</h2>
                     <canvas id="departmentChart"></canvas>
@@ -86,7 +86,7 @@
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-
+                            <!-- COLUMNA DEPARTAMENTO ELIMINADA -->
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Pagado</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
                         </tr>
@@ -95,8 +95,7 @@
                             <th class="p-2">
                                 <input type="text" id="filterNombre" onkeyup="filterTable()" placeholder="Filtrar nombre" class="w-full p-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
                             </th>
-
-                            
+                            <!-- FILTRO DEPARTAMENTO ELIMINADO -->
                             <th class="p-2 flex justify-center items-center h-full">
                                 <!-- SELECT para filtrar por estado de pago (Todos/Pagado/Pendiente) -->
                                 <select id="filterStatus" onchange="filterTable()" class="w-full p-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
@@ -406,7 +405,7 @@
                     scales: {
                         y: {
                             beginAtZero: true,
-                            max: 100, // Para dar un poco de margen al 100% y las etiquetas
+                            max: 100, // Eje Y fijo a 100%
                             title: {
                                 display: true,
                                 text: 'Porcentaje de Recaudación (%)'
@@ -475,11 +474,11 @@
                 row.className = 'member-row transition duration-150 ease-in-out';
                 row.setAttribute('data-status', member.pagado ? 'paid' : 'pending');
                 row.setAttribute('data-name', member.nombre.toLowerCase());
-                row.setAttribute('data-dept', member.dept.toLowerCase());
+                // Ya no necesitamos el atributo data-dept para el filtro de la tabla.
 
                 row.innerHTML = `
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${member.nombre}</td>
-
+                    <!-- Columna Departamento Eliminada -->
                     <td class="px-6 py-4 whitespace-nowrap text-center">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">
                             ${statusText}
@@ -494,21 +493,19 @@
         // Función para filtrar la tabla basada en la entrada de filtros
         function filterTable() {
             const filterNombre = document.getElementById('filterNombre').value.toLowerCase();
-            const filterDept = document.getElementById('filterDept').value.toLowerCase();
+            // El filtro de departamento ya no existe.
             const filterStatus = document.getElementById('filterStatus').value;
             const rows = document.getElementById('memberList').querySelectorAll('tr');
 
             rows.forEach(row => {
                 const name = row.getAttribute('data-name');
-                const dept = row.getAttribute('data-dept');
                 const status = row.getAttribute('data-status');
                 
-                // Aplicar filtros
+                // Aplicar filtros (solo por Nombre y Estado)
                 const matchName = name.includes(filterNombre);
-                const matchDept = dept.includes(filterDept);
                 const matchStatus = filterStatus === 'all' || status === filterStatus;
 
-                if (matchName && matchDept && matchStatus) {
+                if (matchName && matchStatus) {
                     row.classList.remove('hidden');
                 } else {
                     row.classList.add('hidden');
@@ -554,10 +551,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
