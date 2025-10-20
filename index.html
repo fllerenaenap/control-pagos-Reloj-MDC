@@ -27,7 +27,7 @@
         </header>
 
         <!-- Sección de Estadísticas y Gráficos -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div class="grid grid-cols-1 lg:col-span-3 gap-6 mb-8">
 
             <!-- Card: Resumen de Progreso -->
             <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg border-t-4 border-blue-500">
@@ -76,7 +76,7 @@
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Pagado</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
                         </tr>
-                        <!-- Fila de Filtros AÑADIDA -->
+                        <!-- Fila de Filtros -->
                         <tr class="bg-white border-t border-gray-200">
                             <th class="p-2">
                                 <input type="text" id="filterNombre" onkeyup="filterTable()" placeholder="Filtrar nombre" class="w-full p-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
@@ -95,49 +95,109 @@
                                 <div class="text-sm text-gray-400 p-1 text-right">Monto</div>
                             </th>
                         </tr>
-                        <!-- Fin de Fila de Filtros -->
                     </thead>
                     <tbody id="memberList" class="bg-white divide-y divide-gray-200">
                         <!-- Los datos de los miembros se insertarán aquí -->
                     </tbody>
                 </table>
-                <p id="errorMsg" class="text-center text-red-500 mt-4 hidden">No se pudieron cargar los datos. Revisa la URL y los permisos.</p>
             </div>
         </div>
+
+        <!-- Panel de Errores Detallado (ACTUALIZADO para CSV) -->
+        <div id="detailedErrorPanel" class="mt-8 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 hidden rounded-md shadow-md" role="alert">
+            <p class="font-bold text-lg mb-2">🚨 Error Crítico de Conexión: Error HTTP (404)</p>
+            <p id="errorMsgDisplay" class="mb-4 text-sm font-semibold">Este error significa que la URL de publicación CSV ya no existe o ha cambiado. Es una configuración externa al código.</p>
+            <h3 class="font-bold text-red-800 mb-1">Pasos de Solución (CRÍTICO: Publicación de la Hoja):</h3>
+            <ul class="list-disc list-inside text-sm space-y-1">
+                <li><strong>1. Re-publicar la Hoja:</strong> Vuelva a su Google Sheet y vaya a **Archivo** > **Compartir** > **Publicar en la web...**.</li>
+                <li><strong>2. Verificar Formato:</strong> Asegúrese de que esté configurado para la hoja correcta (generalmente la primera) y que el formato de salida sea **"Valores separados por comas (.csv)"**.</li>
+                <li><strong>3. Obtener Nueva URL:</strong> Una vez que la publique (o re-publique), Google le proporcionará la URL activa. Si esa URL es diferente a la de abajo, por favor, compártala para que la actualice en el código.</li>
+                <li><strong>4. URL Usada:</strong> <code id="apiURLDisplay" class="bg-red-200 px-1 py-0.5 rounded text-xs break-all"></code></li>
+            </ul>
+        </div>
+
 
     </div>
 
     <script>
         // Configuración de la aplicación
-        // ¡ACTUALIZADO CON EL NUEVO ID DE LA HOJA DE CÁLCULO!
-        const SHEET_ID = '2PACX-1vTFbglTpzHvcw1Pm25nZr4OPQ7hjK2-KxJPnRHs5B4zVo7CPznzW2xAZm4qYgA1hHmj_EEs8P5LOzFH';
-        const SHEET_NAME = 'sheet1'; // Usamos 'sheet1' por defecto
+        // URL de publicación CSV proporcionada por el usuario
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTFbglTpzHvcw1Pm25nZr4OPQ7hjK2-KxJPnRHs5B4zVo7CPznzW2xAZm4qYgA1hHmj_EEs8P5LOzFH/pub?gid=0&single=true&output=csv'; 
+        
         const EXPECTED_PER_PERSON = 3.60;
         const EXPECTED_TOTAL = 158.40;
-        // URL para la API de visualización de Google Sheets
-        const API_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}&headers=1`;
         
         // Almacena los datos completos de los miembros para el filtrado en memoria
         let membersData = [];
         let membersChartInstance = null;
 
+
+        // Función simple para parsear datos CSV (saltándose la primera fila/cabecera)
+        function parseCSV(csvText) {
+            const rows = csvText.split('\n').filter(line => line.trim() !== '');
+            if (rows.length < 2) return []; // Necesita cabecera y al menos una fila de datos
+
+            const data = [];
+            // Saltar la fila de cabecera (índice 0)
+            for (let i = 1; i < rows.length; i++) {
+                // Separación simple por coma
+                const columns = rows[i].split(','); 
+                
+                if (columns.length >= 4) {
+                    const pagadoString = columns[2].trim().toLowerCase();
+                    
+                    data.push({
+                        nombre: columns[0].trim(),
+                        dept: columns[1].trim(),
+                        // Columna 2: Convertir "TRUE" o "FALSE" a booleano
+                        pagado: pagadoString === 'true' || pagadoString === 'sí' || pagadoString === 'si', 
+                        // Columna 3: Convertir a número (puede tener comillas si el monto es formatado en Google Sheets)
+                        monto: parseFloat(columns[3].trim().replace(/"/g, '')) || 0 
+                    });
+                }
+            }
+            return data;
+        }
+
+        // Función para realizar fetch con reintentos y backoff
+        async function retryFetch(url, maxRetries = 3) {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        return response;
+                    }
+                    if (response.status === 404 || response.status === 403) {
+                         // 404/403 (No encontrado/Permiso denegado) -> Error fatal, no reintentar
+                         throw new Error(`Error HTTP: ${response.status} (${response.statusText}). La URL de publicación CSV es incorrecta, inaccesible o fue despublicada.`);
+                    }
+                } catch (error) {
+                    if (i === maxRetries - 1) {
+                        // Lanzar un error más descriptivo sobre la falla de red
+                        throw new Error(`Error de red: Falló la conexión (Failed to fetch). Posibles causas: CORS, conexión de red inestable o bloqueo por el entorno. Mensaje original: ${error.message}`); 
+                    }
+                    // Espera exponencial: 1s, 2s, 4s...
+                    const delay = Math.pow(2, i) * 1000; 
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+            throw new Error("Máximo de reintentos alcanzado. Fallo en la conexión de red.");
+        }
+
+
         // Función auxiliar para mostrar errores
         function displayError(message) {
             document.getElementById('loading').classList.add('hidden');
-            const errorMsg = document.getElementById('errorMsg');
-            errorMsg.textContent = message;
-            errorMsg.classList.remove('hidden');
             
-            // Log de error específico para guiar al usuario
+            const detailedErrorPanel = document.getElementById('detailedErrorPanel');
+            const errorMsgDisplayElement = document.getElementById('errorMsgDisplay');
+            const apiURLDisplayElement = document.getElementById('apiURLDisplay');
+
+            errorMsgDisplayElement.textContent = message;
+            apiURLDisplayElement.textContent = CSV_URL;
+            detailedErrorPanel.classList.remove('hidden');
+            
             console.error(`ERROR DE CONEXIÓN O PROCESAMIENTO: ${message}`);
-            if (message.includes("No se pudo conectar")) {
-                 console.error("=========================================================================================================");
-                 console.error("GUÍA PARA SOLUCIONAR 'Failed to fetch' o 'Error HTTP (404/403)' con Google Sheets:");
-                 console.error("1. Acceso de LECTURA: Asegúrese de que el enlace de COMPARTIR esté configurado como 'Cualquier persona con el enlace'.");
-                 console.error("2. PUBLICAR EN LA WEB (CRÍTICO): Vaya a su Google Sheet -> Archivo -> Compartir -> Publicar en la web...");
-                 console.error("   Asegúrese de seleccionar la 'Hoja' correcta (sheet1) y publíquela. Esto habilita el acceso para la API.");
-                 console.error("=========================================================================================================");
-            }
         }
 
         // Función para inicializar el gráfico de miembros
@@ -155,7 +215,7 @@
                     datasets: [{
                         label: 'Miembros',
                         data: [paidCount, totalCount - paidCount],
-                        backgroundColor: ['#10B981', '#F59E0B'], // Verde esmeralda y Ámbar
+                        backgroundColor: ['#10B981', '#F59E0B'],
                         hoverOffset: 4
                     }]
                 },
@@ -195,7 +255,7 @@
                 memberListElement.innerHTML = `
                     <tr>
                         <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">
-                            No se encontraron miembros que coincidan con los filtros.
+                            No se encontraron miembros que coincidan con los filtros o no se encontraron datos válidos.
                         </td>
                     </tr>
                 `;
@@ -209,7 +269,6 @@
                 const statusText = member.pagado ? 'Sí' : 'No';
                 const statusColor = member.pagado ? 'text-green-600' : 'text-red-500';
 
-                // Usamos el índice de la data filtrada para alternar el color de las filas
                 memberListHTML += `
                     <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100">
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${member.nombre}</td>
@@ -230,19 +289,14 @@
         function filterTable() {
             const filterNombre = document.getElementById('filterNombre').value.toLowerCase();
             const filterDept = document.getElementById('filterDept').value.toLowerCase();
-            const filterPagado = document.getElementById('filterPagado').value; // 'true', 'false', o ''
+            const filterPagado = document.getElementById('filterPagado').value;
 
             const filteredData = membersData.filter(member => {
-                // Filtro por Nombre (búsqueda parcial)
                 const matchesNombre = member.nombre.toLowerCase().includes(filterNombre);
-
-                // Filtro por Depto. (búsqueda parcial)
                 const matchesDept = member.dept.toLowerCase().includes(filterDept);
 
-                // Filtro por Pagado ('true', 'false', o todos si es '')
                 let matchesPagado = true;
                 if (filterPagado !== '') {
-                    // Convertir el string del select a booleano para la comparación
                     const targetPaidStatus = filterPagado === 'true';
                     matchesPagado = member.pagado === targetPaidStatus;
                 }
@@ -256,64 +310,29 @@
 
         // Función principal para cargar datos y renderizar
         async function fetchDataAndRender() {
+            document.getElementById('detailedErrorPanel').classList.add('hidden');
             document.getElementById('loading').classList.remove('hidden');
             
             try {
-                // Hacemos la solicitud a la API de visualización de Google Sheets
-                const response = await fetch(API_URL);
+                // 1. Obtener los datos CSV
+                const response = await retryFetch(CSV_URL);
+                const csvText = await response.text();
 
-                if (!response.ok) {
-                    // Si hay un error HTTP (404, 403), lanzamos un error explícito
-                    throw new Error(`Error HTTP: ${response.statusText} (${response.status})`);
+                // 2. Parsear los datos CSV a la estructura de miembros
+                membersData = parseCSV(csvText);
+
+                if (membersData.length === 0) {
+                     throw new Error("No se pudo parsear datos o la hoja está vacía. Verifique la estructura de columnas.");
                 }
 
-                const text = await response.text();
-
-                // La respuesta viene envuelta en google.visualization.Query.setResponse().
-                // Extraemos el JSON.
-                const jsonText = text.substring(
-                    text.indexOf('(') + 1, 
-                    text.lastIndexOf(')')
-                );
-                
-                const data = JSON.parse(jsonText);
-                
-                if (data.status !== 'ok') {
-                    throw new Error(data.errors?.[0]?.message || 'Error al obtener datos del Sheet.');
-                }
-
-                const rows = data.table.rows;
-                const totalMembers = rows.length;
-
+                // 3. Calcular totales
                 let paidMembersCount = 0;
                 let totalCollected = 0;
+                const totalMembers = membersData.length;
 
-                // Limpiamos y procesamos los datos para guardarlos en membersData
-                membersData = [];
-                rows.forEach((row) => {
-                    // Los datos están en 'c' (cells)
-                    const nombre = row.c[0]?.v || 'N/A';
-                    const dept = row.c[1]?.v || 'N/A';
-                    // La columna C (índice 2) es 'pagado' (true/false)
-                    // El valor en Google Sheets puede ser null si la celda está vacía
-                    const pagadoCell = row.c[2];
-                    const pagado = pagadoCell && pagadoCell.v === true; 
-                    
-                    // La columna D (índice 3) es 'monto'
-                    const montoCell = row.c[3];
-                    const monto = montoCell && (montoCell.v !== null && montoCell.v !== undefined) ? montoCell.v : 0; 
-                    
-                    const memberMonto = parseFloat(monto) || 0; // Asegurar que es un número
-                    
-                    membersData.push({
-                        nombre: nombre,
-                        dept: dept,
-                        pagado: pagado,
-                        monto: memberMonto
-                    });
-
-                    totalCollected += memberMonto;
-                    if (pagado) {
+                membersData.forEach((member) => {
+                    totalCollected += member.monto;
+                    if (member.pagado) {
                         paidMembersCount++;
                     }
                 });
@@ -322,31 +341,26 @@
                 const pendingMembersCount = totalMembers - paidMembersCount;
                 const collectionProgress = (totalCollected / EXPECTED_TOTAL) * 100;
                 
-                // 1. Actualizar Estadísticas
+                // 4. Actualizar Estadísticas
                 document.getElementById('collectedTotal').textContent = `$${totalCollected.toFixed(2)}`;
                 document.getElementById('pendingMembers').textContent = pendingMembersCount;
                 
-                // 2. Actualizar Barra de Progreso
+                // 5. Actualizar Barra de Progreso
                 const progressBar = document.getElementById('progressBar');
                 progressBar.style.width = `${Math.min(collectionProgress, 100).toFixed(0)}%`;
                 progressBar.className = `bg-blue-600 h-4 rounded-full transition-all duration-700 ${collectionProgress >= 100 ? 'bg-green-600' : 'bg-blue-600'}`;
                 document.getElementById('progressPercent').textContent = `${collectionProgress.toFixed(2)}% de $${EXPECTED_TOTAL}`;
                 
-                // 3. Renderizar Gráfico
+                // 6. Renderizar Gráfico
                 initChart(paidMembersCount, totalMembers);
 
-                // 4. Renderizar Lista de Miembros (Usando la data completa inicialmente)
+                // 7. Renderizar Lista de Miembros (Usando la data completa inicialmente)
                 renderTable(membersData);
 
                 document.getElementById('loading').classList.add('hidden');
 
             } catch (error) {
-                // Mensaje de error mejorado para el usuario
-                if (error.message.includes("Failed to fetch") || error.message.includes("Error HTTP")) {
-                    displayError(`No se pudo conectar con Google Sheets. Verifica: 1. Conexión a Internet. 2. **Configuración de Publicación**: El Sheet DEBE estar publicado en la web (Archivo > Compartir > Publicar en la web...). Error: ${error.message}`);
-                } else {
-                    displayError(`Error al procesar datos: ${error.message}. Asegúrate de que la hoja se llame 'sheet1' y los datos sean correctos (columna C como booleanos y D como números).`);
-                }
+                displayError(`Error al obtener o procesar datos CSV: ${error.message}`);
             }
         }
 
