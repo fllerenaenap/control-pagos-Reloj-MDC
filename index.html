@@ -22,7 +22,7 @@
         <!-- Encabezado de la Aplicación -->
         <header class="text-center py-6 mb-8 bg-white shadow-lg rounded-xl">
             <h1 class="text-4xl font-extrabold text-blue-800">📊 Control de Pagos del Grupo</h1>
-            <p class="mt-2 text-xl text-gray-600">Lista actualizada</p>
+            <p class="mt-2 text-xl text-gray-600">Lista actualizada, vamos por ese reloj!</p>
             <div id="loading" class="mt-4 text-blue-500 font-semibold hidden">Cargando datos...</div>
         </header>
 
@@ -86,11 +86,12 @@
                                 <input type="text" id="filterDept" onkeyup="filterTable()" placeholder="Filtrar depto." class="w-full p-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
                             </th>
                             <th class="p-2 flex justify-center items-center h-full">
-                                <!-- CHECKBOX para mostrar solo pendientes -->
-                                <div class="flex items-center space-x-2 p-1 pt-2">
-                                    <input type="checkbox" id="showPendingOnly" onchange="filterTable()" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
-                                    <label for="showPendingOnly" class="text-sm text-gray-700 whitespace-nowrap">Pendientes</label>
-                                </div>
+                                <!-- SELECT para filtrar por estado de pago (Todos/Pagado/Pendiente) -->
+                                <select id="filterStatus" onchange="filterTable()" class="w-full p-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="all">Todos</option>
+                                    <option value="paid">Pagado</option>
+                                    <option value="pending">Pendiente</option>
+                                </select>
                             </th>
                             <th class="p-2">
                                 <div class="text-sm text-gray-400 p-1 text-right">Monto</div>
@@ -126,7 +127,7 @@
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTFbglTpzHvcw1Pm25nZr4OPQ7hjK2-KxJPnRHs5B4zVo7CPznzW2xAZm4qYgA1hHmj_EEs8P5LOzFH/pub?output=csv'; 
         
         // Costo fijo por miembro solicitado por el usuario.
-        const COST_PER_MEMBER = 3.6; 
+        const COST_PER_MEMBER = 3.56; 
         
         // Almacena los datos completos de los Integrantes para el filtrado en memoria
         let membersData = [];
@@ -264,18 +265,20 @@
             }
 
             data.forEach((member, index) => {
-                const statusIcon = member.pagado 
-                    ? '<span class="text-green-500 font-bold">✓</span>' 
-                    : '<span class="text-red-500 font-bold">✗</span>';
-                const statusText = member.pagado ? 'Sí' : 'No';
-                const statusColor = member.pagado ? 'text-green-600' : 'text-red-500';
+                const badgeClass = member.pagado 
+                    ? 'bg-green-100 text-green-800' // Pagado (Verde)
+                    : 'bg-red-100 text-red-800';   // Pendiente (Rojo)
+                const badgeText = member.pagado ? 'Pagado' : 'Pendiente';
 
                 memberListHTML += `
                     <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100">
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${member.nombre}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${member.dept}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm ${statusColor}">
-                            ${statusIcon} ${statusText}
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
+                            <!-- Badge Redondeado con el estado -->
+                            <span class="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-semibold ${badgeClass}">
+                                ${badgeText}
+                            </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
                             $${member.monto.toFixed(2)}
@@ -290,21 +293,25 @@
         function filterTable() {
             const filterNombre = document.getElementById('filterNombre').value.toLowerCase();
             const filterDept = document.getElementById('filterDept').value.toLowerCase();
-            // Obtener el estado del checkbox
-            const showPendingOnly = document.getElementById('showPendingOnly').checked; 
+            
+            // MODIFICACIÓN: Obtener el valor seleccionado del dropdown (all, paid, pending)
+            const filterStatus = document.getElementById('filterStatus').value; 
 
             const filteredData = membersData.filter(member => {
                 const matchesNombre = member.nombre.toLowerCase().includes(filterNombre);
                 const matchesDept = member.dept.toLowerCase().includes(filterDept);
 
-                let matchesPagado = true;
+                let matchesStatus = true;
                 
-                // Si el checkbox "Pendientes" está marcado, solo mostramos a quienes NO han pagado.
-                if (showPendingOnly) {
-                    matchesPagado = !member.pagado; // true si member.pagado es false (Pendiente)
+                // Aplicar el filtro según el estado seleccionado en el dropdown
+                if (filterStatus === 'paid') {
+                    matchesStatus = member.pagado; // Solo mostrar Pagados (true)
+                } else if (filterStatus === 'pending') {
+                    matchesStatus = !member.pagado; // Solo mostrar Pendientes (false)
                 }
+                // Si es 'all', matchesStatus se mantiene en true, mostrando todos
 
-                return matchesNombre && matchesDept && matchesPagado;
+                return matchesNombre && matchesDept && matchesStatus;
             });
 
             renderTable(filteredData);
