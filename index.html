@@ -95,8 +95,7 @@
                             <th class="p-2">
                                 <input type="text" id="filterNombre" onkeyup="filterTable()" placeholder="Filtrar nombre" class="w-full p-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
                             </th>
-                            <th class="p-2">
-                                <input type="text" id="filterDept" onkeyup="filterTable()" placeholder="Filtrar depto." class="w-full p-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
+
                             </th>
                             <th class="p-2 flex justify-center items-center h-full">
                                 <!-- SELECT para filtrar por estado de pago (Todos/Pagado/Pendiente) -->
@@ -182,7 +181,7 @@
                     
                     data.push({
                         nombre: columns[0].trim(),
-                        dept: columns[1].trim(),
+                        
                         // Columna 2: Convertir "TRUE" o "FALSE" o "si" a booleano
                         pagado: pagadoString === 'true' || pagadoString === 'sí' || pagadoString === 'si', 
                         // Columna 3: Convertir a número (eliminar comillas si Google Sheets las añadió)
@@ -555,6 +554,7 @@
     </script>
 </body>
 </html>
+
 
 
 
