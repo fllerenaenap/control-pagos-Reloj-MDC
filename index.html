@@ -22,7 +22,7 @@
         <!-- Encabezado de la Aplicación -->
         <header class="text-center py-6 mb-8 bg-white shadow-lg rounded-xl">
             <h1 class="text-4xl font-extrabold text-blue-800">📊 Control de Pagos del Grupo</h1>
-            <p class="mt-2 text-xl text-gray-600">Actualizado desde Google Sheets</p>
+            <p class="mt-2 text-xl text-gray-600">Lista actualizada</p>
             <div id="loading" class="mt-4 text-blue-500 font-semibold hidden">Cargando datos...</div>
         </header>
 
@@ -35,14 +35,15 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                     <div class="mb-4 md:mb-0">
                         <p class="text-sm font-medium text-gray-500">Monto Esperado Total:</p>
-                        <p id="expectedTotal" class="text-3xl font-extrabold text-gray-900">$158.40</p>
+                        <!-- El valor inicial es 0.00, se actualiza dinámicamente -->
+                        <p id="expectedTotal" class="text-3xl font-extrabold text-gray-900">$0.00</p>
                     </div>
                     <div class="mb-4 md:mb-0">
                         <p class="text-sm font-medium text-gray-500">Monto Recaudado:</p>
                         <p id="collectedTotal" class="text-3xl font-extrabold text-green-600">$0.00</p>
                     </div>
                     <div>
-                        <p class="text-sm font-medium text-gray-500">Miembros que Faltan:</p>
+                        <p class="text-sm font-medium text-gray-500">Integrantes que Faltan:</p>
                         <p id="pendingMembers" class="text-3xl font-extrabold text-red-500">0</p>
                     </div>
                 </div>
@@ -55,7 +56,7 @@
                 <p id="progressPercent" class="text-right text-sm font-medium text-gray-600">0%</p>
             </div>
 
-            <!-- Card: Gráfico de Miembros Pagados -->
+            <!-- Card: Gráfico de Integrantes Pagados -->
             <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-teal-500 flex justify-center items-center">
                 <div class="w-full h-64">
                     <canvas id="membersChart"></canvas>
@@ -84,12 +85,12 @@
                             <th class="p-2">
                                 <input type="text" id="filterDept" onkeyup="filterTable()" placeholder="Filtrar depto." class="w-full p-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
                             </th>
-                            <th class="p-2">
-                                <select id="filterPagado" onchange="filterTable()" class="w-full p-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
-                                    <option value="">Todos</option>
-                                    <option value="true">Sí (Pagado)</option>
-                                    <option value="false">No (Pendiente)</option>
-                                </select>
+                            <th class="p-2 flex justify-center items-center h-full">
+                                <!-- CHECKBOX para mostrar solo pendientes -->
+                                <div class="flex items-center space-x-2 p-1 pt-2">
+                                    <input type="checkbox" id="showPendingOnly" onchange="filterTable()" class="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                                    <label for="showPendingOnly" class="text-sm text-gray-700 whitespace-nowrap">Pendientes</label>
+                                </div>
                             </th>
                             <th class="p-2">
                                 <div class="text-sm text-gray-400 p-1 text-right">Monto</div>
@@ -97,22 +98,22 @@
                         </tr>
                     </thead>
                     <tbody id="memberList" class="bg-white divide-y divide-gray-200">
-                        <!-- Los datos de los miembros se insertarán aquí -->
+                        <!-- Los datos de los Integrantes se insertarán aquí -->
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Panel de Errores Detallado (ACTUALIZADO para CSV) -->
+        <!-- Panel de Errores Detallado -->
         <div id="detailedErrorPanel" class="mt-8 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 hidden rounded-md shadow-md" role="alert">
             <p class="font-bold text-lg mb-2">🚨 Error Crítico de Conexión: Error HTTP (404)</p>
-            <p id="errorMsgDisplay" class="mb-4 text-sm font-semibold">Este error significa que la URL de publicación CSV ya no existe o ha cambiado. Es una configuración externa al código.</p>
+            <p id="errorMsgDisplay" class="mb-4 text-sm font-semibold">Este error significa que la URL de publicación CSV está inactiva o ha cambiado. Vuelva a publicarla para obtener la URL correcta y actualícela en la constante CSV_URL.</p>
             <h3 class="font-bold text-red-800 mb-1">Pasos de Solución (CRÍTICO: Publicación de la Hoja):</h3>
             <ul class="list-disc list-inside text-sm space-y-1">
                 <li><strong>1. Re-publicar la Hoja:</strong> Vuelva a su Google Sheet y vaya a **Archivo** > **Compartir** > **Publicar en la web...**.</li>
                 <li><strong>2. Verificar Formato:</strong> Asegúrese de que esté configurado para la hoja correcta (generalmente la primera) y que el formato de salida sea **"Valores separados por comas (.csv)"**.</li>
-                <li><strong>3. Obtener Nueva URL:</strong> Una vez que la publique (o re-publique), Google le proporcionará la URL activa. Si esa URL es diferente a la de abajo, por favor, compártala para que la actualice en el código.</li>
-                <li><strong>4. URL Usada:</strong> <code id="apiURLDisplay" class="bg-red-200 px-1 py-0.5 rounded text-xs break-all"></code></li>
+                <li><strong>3. Obtener Nueva URL y Compartirla:</strong> Una vez que la republique, Google generará una URL activa. Si es diferente a la que ve abajo, <strong>por favor, compártala</strong> para que pueda actualizar la constante `CSV_URL` en este código.</li>
+                <li><strong>4. URL Usada:</strong> <code id="apiURLDisplay" class="bg-red-200 px-1 py-0.5 rounded text-xs break-all">https://docs.google.com/spreadsheets/d/e/2PACX-1vTFbglTpzHvcw1Pm25nZr4OPQ7hjK2-KxJPnRHs5B4zVo7CPznzW2xAZm4qYgA1hHmj_EEs8P5LOzFH/pub?gid=0&single=true&output=csv</code></li>
             </ul>
         </div>
 
@@ -124,10 +125,10 @@
         // URL de publicación CSV proporcionada por el usuario
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTFbglTpzHvcw1Pm25nZr4OPQ7hjK2-KxJPnRHs5B4zVo7CPznzW2xAZm4qYgA1hHmj_EEs8P5LOzFH/pub?output=csv'; 
         
-        const EXPECTED_PER_PERSON = 3.60;
-        const EXPECTED_TOTAL = 158.40;
+        // Costo fijo por miembro solicitado por el usuario.
+        const COST_PER_MEMBER = 3.6; 
         
-        // Almacena los datos completos de los miembros para el filtrado en memoria
+        // Almacena los datos completos de los Integrantes para el filtrado en memoria
         let membersData = [];
         let membersChartInstance = null;
 
@@ -200,7 +201,7 @@
             console.error(`ERROR DE CONEXIÓN O PROCESAMIENTO: ${message}`);
         }
 
-        // Función para inicializar el gráfico de miembros
+        // Función para inicializar el gráfico de Integrantes
         function initChart(paidCount, totalCount) {
             const ctx = document.getElementById('membersChart').getContext('2d');
             
@@ -213,7 +214,7 @@
                 data: {
                     labels: ['Pagado', 'Pendiente'],
                     datasets: [{
-                        label: 'Miembros',
+                        label: 'Integrantes',
                         data: [paidCount, totalCount - paidCount],
                         backgroundColor: ['#10B981', '#F59E0B'],
                         hoverOffset: 4
@@ -234,7 +235,7 @@
                         },
                         title: {
                             display: true,
-                            text: `Estado de Pagos (${totalCount} miembros)`,
+                            text: `Estado de Pagos (${totalCount} Integrantes)`,
                             font: {
                                 size: 18,
                                 weight: 'bold'
@@ -255,7 +256,7 @@
                 memberListElement.innerHTML = `
                     <tr>
                         <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">
-                            No se encontraron miembros que coincidan con los filtros o no se encontraron datos válidos.
+                            No se encontraron Integrantes que coincidan con los filtros o no se encontraron datos válidos.
                         </td>
                     </tr>
                 `;
@@ -285,20 +286,22 @@
             memberListElement.innerHTML = memberListHTML;
         }
 
-        // Función para filtrar los datos de los miembros
+        // Función para filtrar los datos de los Integrantes
         function filterTable() {
             const filterNombre = document.getElementById('filterNombre').value.toLowerCase();
             const filterDept = document.getElementById('filterDept').value.toLowerCase();
-            const filterPagado = document.getElementById('filterPagado').value;
+            // Obtener el estado del checkbox
+            const showPendingOnly = document.getElementById('showPendingOnly').checked; 
 
             const filteredData = membersData.filter(member => {
                 const matchesNombre = member.nombre.toLowerCase().includes(filterNombre);
                 const matchesDept = member.dept.toLowerCase().includes(filterDept);
 
                 let matchesPagado = true;
-                if (filterPagado !== '') {
-                    const targetPaidStatus = filterPagado === 'true';
-                    matchesPagado = member.pagado === targetPaidStatus;
+                
+                // Si el checkbox "Pendientes" está marcado, solo mostramos a quienes NO han pagado.
+                if (showPendingOnly) {
+                    matchesPagado = !member.pagado; // true si member.pagado es false (Pendiente)
                 }
 
                 return matchesNombre && matchesDept && matchesPagado;
@@ -318,7 +321,7 @@
                 const response = await retryFetch(CSV_URL);
                 const csvText = await response.text();
 
-                // 2. Parsear los datos CSV a la estructura de miembros
+                // 2. Parsear los datos CSV a la estructura de Integrantes
                 membersData = parseCSV(csvText);
 
                 if (membersData.length === 0) {
@@ -329,6 +332,9 @@
                 let paidMembersCount = 0;
                 let totalCollected = 0;
                 const totalMembers = membersData.length;
+                
+                // CÁLCULO DINÁMICO del total esperado
+                const expectedTotalCalculated = totalMembers * COST_PER_MEMBER;
 
                 membersData.forEach((member) => {
                     totalCollected += member.monto;
@@ -339,9 +345,12 @@
 
                 // Cálculos finales y actualización de la UI
                 const pendingMembersCount = totalMembers - paidMembersCount;
-                const collectionProgress = (totalCollected / EXPECTED_TOTAL) * 100;
+                // Usar el total esperado calculado para el progreso
+                const collectionProgress = (totalCollected / expectedTotalCalculated) * 100;
                 
                 // 4. Actualizar Estadísticas
+                // El monto esperado se actualiza con el valor calculado
+                document.getElementById('expectedTotal').textContent = `$${expectedTotalCalculated.toFixed(2)}`;
                 document.getElementById('collectedTotal').textContent = `$${totalCollected.toFixed(2)}`;
                 document.getElementById('pendingMembers').textContent = pendingMembersCount;
                 
@@ -349,12 +358,13 @@
                 const progressBar = document.getElementById('progressBar');
                 progressBar.style.width = `${Math.min(collectionProgress, 100).toFixed(0)}%`;
                 progressBar.className = `bg-blue-600 h-4 rounded-full transition-all duration-700 ${collectionProgress >= 100 ? 'bg-green-600' : 'bg-blue-600'}`;
-                document.getElementById('progressPercent').textContent = `${collectionProgress.toFixed(2)}% de $${EXPECTED_TOTAL}`;
+                // El porcentaje de progreso también usa el total esperado calculado
+                document.getElementById('progressPercent').textContent = `${collectionProgress.toFixed(2)}% de $${expectedTotalCalculated.toFixed(2)}`;
                 
                 // 6. Renderizar Gráfico
                 initChart(paidMembersCount, totalMembers);
 
-                // 7. Renderizar Lista de Miembros (Usando la data completa inicialmente)
+                // 7. Renderizar Lista de Integrantes (Usando la data completa inicialmente)
                 renderTable(membersData);
 
                 document.getElementById('loading').classList.add('hidden');
@@ -372,4 +382,3 @@
     </script>
 </body>
 </html>
-
