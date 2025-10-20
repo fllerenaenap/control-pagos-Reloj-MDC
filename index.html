@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Carga de la librería Chart.js para los gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+     <!-- NUEVA LÍNEA: Plugin para mostrar etiquetas de datos (porcentajes) en las barras -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script> 
     <style>
         /* Configuración de fuente Inter para un aspecto moderno */
         body {
@@ -199,7 +201,140 @@
             
             console.error(`ERROR DE CONEXIÓN O PROCESAMIENTO: ${message}`);
         }
+// Función para calcular las estadísticas por departamento (NUEVO)
+        function calculateDepartmentStats(data) {
+            const deptMap = {};
 
+            data.forEach(member => {
+                // Usa el valor del departamento de la hoja o 'Sin Depto' si está vacío
+                const deptName = member.dept && member.dept !== '' ? member.dept : 'Sin Depto'; 
+                
+                if (!deptMap[deptName]) {
+                    deptMap[deptName] = {
+                        collected: 0,
+                        expected: 0,
+                        memberCount: 0
+                    };
+                }
+
+                deptMap[deptName].collected += member.monto;
+                deptMap[deptName].memberCount++;
+                // El total esperado es fijo por cada miembro
+                deptMap[deptName].expected += COST_PER_MEMBER; 
+            });
+
+            const results = {
+                labels: [],
+                percentages: [],
+                colors: []
+            };
+
+            // Paleta de colores para los departamentos (hasta 6-7 colores)
+            const colorPalette = [
+                '#6366f1', // Indigo 500
+                '#10b981', // Emerald 500
+                '#f59e0b', // Amber 500
+                '#ef4444', // Red 500
+                '#06b6d4', // Cyan 500
+                '#a855f7', // Purple 500
+                '#9ca3af'  // Gray 400 (para 'Sin Depto')
+            ];
+            let colorIndex = 0;
+
+            for (const deptName in deptMap) {
+                const stats = deptMap[deptName];
+                let percentage = 0;
+
+                if (stats.expected > 0) {
+                     // Calcular porcentaje recaudado vs esperado
+                    percentage = (stats.collected / stats.expected) * 100; 
+                }
+
+                results.labels.push(deptName);
+                results.percentages.push(Math.min(percentage, 100).toFixed(1)); // Limitar a 100% y un decimal
+                
+                results.colors.push(colorPalette[colorIndex % colorPalette.length]);
+                colorIndex++;
+            }
+
+            return results;
+        }
+
+        // Función para inicializar el gráfico de porcentaje de departamentos (NUEVO)
+        function initDepartmentChart(deptStats) {
+            const ctx = document.getElementById('departmentChart').getContext('2d');
+            
+            if (departmentChartInstance) {
+                departmentChartInstance.destroy();
+            }
+
+            departmentChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: deptStats.labels,
+                    datasets: [{
+                        label: '% de Recaudación',
+                        data: deptStats.percentages,
+                        backgroundColor: deptStats.colors,
+                        borderColor: deptStats.colors,
+                        borderWidth: 1
+                    }]
+                },
+                plugins: [ChartDataLabels], // AÑADIDO: Registrar el plugin de datalabels
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Porcentaje (%)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Departamento'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        // AÑADIDO: Configuración de datalabels para mostrar el porcentaje sobre la barra
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            formatter: function(value, context) {
+                                // Asegurarse de que el valor se muestre como porcentaje
+                                return value + '%'; 
+                            },
+                            color: '#4B5563', 
+                            font: {
+                                weight: 'bold'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y + '%';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
         // Función para inicializar el gráfico de Integrantes
         function initChart(paidCount, totalCount) {
             const ctx = document.getElementById('membersChart').getContext('2d');
@@ -387,5 +522,6 @@
     </script>
 </body>
 </html>
+
 
 
