@@ -8,13 +8,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Carga de la librería Chart.js para los gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-     <!-- NUEVA LÍNEA: Plugin para mostrar etiquetas de datos (porcentajes) en las barras -->
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script> 
+    <!-- Plugin para mostrar etiquetas de datos (porcentajes) en las barras y donut -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script> 
     <style>
         /* Configuración de fuente Inter para un aspecto moderno */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
+        }
+        /* Estilo para filas de tabla al pasar el ratón */
+        .member-row:hover {
+            background-color: #f9fafb;
         }
     </style>
 </head>
@@ -25,22 +29,21 @@
         <header class="text-center py-6 mb-8 bg-white shadow-lg rounded-xl">
             <h1 class="text-4xl font-extrabold text-blue-800">📊 Control de Pagos del Grupo</h1>
             <p class="mt-2 text-xl text-gray-600">Lista actualizada, vamos por ese reloj!</p>
-            <div id="loading" class="mt-4 text-blue-500 font-semibold hidden">Cargando datos...</div>
+            <div id="loading" class="mt-4 text-blue-500 font-semibold">Cargando datos...</div>
         </header>
 
         <!-- Sección de Estadísticas y Gráficos -->
-        <div class="grid grid-cols-1 gap-6 mb-8">  <!-- CAMBIO: Siempre 1 columna, uno debajo del otro -->
-
-            <!-- Card: Resumen de Progreso -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+             <!-- Card: Resumen de Progreso -->
             <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-blue-500">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">Resumen General</h2>
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                    <div class="mb-4 md:mb-0">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                    <div class="mb-4 sm:mb-0">
                         <p class="text-sm font-medium text-gray-500">Monto Esperado Total:</p>
                         <!-- El valor inicial es 0.00, se actualiza dinámicamente -->
                         <p id="expectedTotal" class="text-3xl font-extrabold text-gray-900">$0.00</p>
                     </div>
-                    <div class="mb-4 md:mb-0">
+                    <div class="mb-4 sm:mb-0">
                         <p class="text-sm font-medium text-gray-500">Monto Recaudado:</p>
                         <p id="collectedTotal" class="text-3xl font-extrabold text-green-600">$0.00</p>
                     </div>
@@ -58,16 +61,17 @@
                 <p id="progressPercent" class="text-right text-sm font-medium text-gray-600">0%</p>
             </div>
 
-            <!-- Card: Gráfico de Integrantes Pagados -->
+            <!-- Card: Gráfico de Integrantes Pagados (Doughnut) -->
             <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-teal-500 flex justify-center items-center">
                 <div class="w-full h-64">
                     <canvas id="membersChart"></canvas>
                 </div>
             </div>
 
-            <!-- NUEVO: Card: Gráfico de Porcentaje por Departamentos -->
-            <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-purple-500 flex justify-center items-center">
-                <div class="w-full h-64">
+            <!-- NUEVO: Card: Gráfico de Porcentaje por Departamentos (Barra) -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-purple-500 md:col-span-2 flex justify-center items-center">
+                <div class="w-full h-80">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Progreso de Pago por Departamento</h2>
                     <canvas id="departmentChart"></canvas>
                 </div>
             </div>
@@ -82,7 +86,7 @@
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Departamento</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Pagado</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</th>
                         </tr>
@@ -91,7 +95,9 @@
                             <th class="p-2">
                                 <input type="text" id="filterNombre" onkeyup="filterTable()" placeholder="Filtrar nombre" class="w-full p-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
                             </th>
-
+                            <th class="p-2">
+                                <input type="text" id="filterDept" onkeyup="filterTable()" placeholder="Filtrar depto." class="w-full p-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
+                            </th>
                             <th class="p-2 flex justify-center items-center h-full">
                                 <!-- SELECT para filtrar por estado de pago (Todos/Pagado/Pendiente) -->
                                 <select id="filterStatus" onchange="filterTable()" class="w-full p-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
@@ -114,14 +120,13 @@
 
         <!-- Panel de Errores Detallado -->
         <div id="detailedErrorPanel" class="mt-8 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 hidden rounded-md shadow-md" role="alert">
-            <p class="font-bold text-lg mb-2">🚨 Error Crítico de Conexión: Error HTTP (404)</p>
-            <p id="errorMsgDisplay" class="mb-4 text-sm font-semibold">Este error significa que la URL de publicación CSV está inactiva o ha cambiado. Vuelva a publicarla para obtener la URL correcta y actualícela en la constante CSV_URL.</p>
+            <p class="font-bold text-lg mb-2">🚨 Error Crítico de Conexión o Datos</p>
+            <p id="errorMsgDisplay" class="mb-4 text-sm font-semibold">Mensaje de error.</p>
             <h3 class="font-bold text-red-800 mb-1">Pasos de Solución (CRÍTICO: Publicación de la Hoja):</h3>
             <ul class="list-disc list-inside text-sm space-y-1">
                 <li><strong>1. Re-publicar la Hoja:</strong> Vuelva a su Google Sheet y vaya a **Archivo** > **Compartir** > **Publicar en la web...**.</li>
                 <li><strong>2. Verificar Formato:</strong> Asegúrese de que esté configurado para la hoja correcta (generalmente la primera) y que el formato de salida sea **"Valores separados por comas (.csv)"**.</li>
-                <li><strong>3. Obtener Nueva URL y Compartirla:</strong> Una vez que la republique, Google generará una URL activa. Si es diferente a la que ve abajo, <strong>por favor, compártala</strong> para que pueda actualizar la constante `CSV_URL` en este código.</li>
-                <li><strong>4. URL Usada:</strong> <code id="apiURLDisplay" class="bg-red-200 px-1 py-0.5 rounded text-xs break-all">https://docs.google.com/spreadsheets/d/e/2PACX-1vTFbglTpzHvcw1Pm25nZr4OPQ7hjK2-KxJPnRHs5B4zVo7CPznzW2xAZm4qYgA1hHmj_EEs8P5LOzFH/pub?output=csv</code></li>
+                <li><strong>3. URL Usada:</strong> <code id="apiURLDisplay" class="bg-red-200 px-1 py-0.5 rounded text-xs break-all"></code></li>
             </ul>
         </div>
 
@@ -129,28 +134,48 @@
     </div>
 
     <script>
-        // Configuración de la aplicación
-        // URL de publicación CSV proporcionada por el usuario
-        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTFbglTpzHvcw1Pm25nZr4OPQ7hjK2-KxJPnRHs5B4zVo7CPznzW2xAZm4qYgA1hHmj_EEs8P5LOzFH/pub?output=csv'; 
+        // =========================================================================================
+        // CONFIGURACIÓN Y CONSTANTES
+        // =========================================================================================
+
+        // URL de publicación CSV proporcionada por el usuario.
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTFbglTpzHvcw1Pm25nZr4OPQ7hjK2-KxJPnRHs5B4zVo7CPznzW2xAZm4qYgA1hHmj_EEs8P5LOzFH/pub?output=csv'; 
         
         // Costo fijo por miembro solicitado por el usuario.
-        const COST_PER_MEMBER = 3.6; 
+        const COST_PER_MEMBER = 3.6; 
         
         // Almacena los datos completos de los Integrantes para el filtrado en memoria
         let membersData = [];
         let membersChartInstance = null;
-        let departmentChartInstance = null;  // NUEVO: Instancia para el gráfico de departamentos
+        let departmentChartInstance = null; 
+
+        // =========================================================================================
+        // UTILIDADES Y LÓGICA DE DATOS
+        // =========================================================================================
+
+        // Función auxiliar para formatear montos a moneda (USD por defecto, dos decimales)
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+            }).format(amount);
+        }
 
         // Función simple para parsear datos CSV (saltándose la primera fila/cabecera)
         function parseCSV(csvText) {
             const rows = csvText.split('\n').filter(line => line.trim() !== '');
-            if (rows.length < 2) return []; // Necesita cabecera y al menos una fila de datos
+            if (rows.length < 2) {
+                 throw new Error("CSV vacío o con formato incorrecto. Asegúrese de que la hoja tenga al menos una fila de datos después del encabezado.");
+            }
 
+            // Nota: Se asume el orden de las columnas: Nombre, Dept, Pagado (TRUE/FALSE), Monto.
             const data = [];
             // Saltar la fila de cabecera (índice 0)
             for (let i = 1; i < rows.length; i++) {
-                // Separación simple por coma
-                const columns = rows[i].split(','); 
+                // Separación por coma. Esto es simple y puede fallar con nombres/montos que contengan comas,
+                // pero es el método estándar para CSV publicados desde Google Sheets.
+                const columns = rows[i].split(','); 
                 
                 if (columns.length >= 4) {
                     const pagadoString = columns[2].trim().toLowerCase();
@@ -158,10 +183,10 @@
                     data.push({
                         nombre: columns[0].trim(),
                         dept: columns[1].trim(),
-                        // Columna 2: Convertir "TRUE" o "FALSE" a booleano
-                        pagado: pagadoString === 'true' || pagadoString === 'sí' || pagadoString === 'si', 
-                        // Columna 3: Convertir a número (puede tener comillas si el monto es formatado en Google Sheets)
-                        monto: parseFloat(columns[3].trim().replace(/"/g, '')) || 0 
+                        // Columna 2: Convertir "TRUE" o "FALSE" o "si" a booleano
+                        pagado: pagadoString === 'true' || pagadoString === 'sí' || pagadoString === 'si', 
+                        // Columna 3: Convertir a número (eliminar comillas si Google Sheets las añadió)
+                        monto: parseFloat(columns[3].trim().replace(/"/g, '')) || 0 
                     });
                 }
             }
@@ -178,22 +203,23 @@
                     }
                     if (response.status === 404 || response.status === 403) {
                          // 404/403 (No encontrado/Permiso denegado) -> Error fatal, no reintentar
-                         throw new Error(`Error HTTP: ${response.status} (${response.statusText}). La URL de publicación CSV es incorrecta, inaccesible o fue despublicada.`);
+                         throw new Error(`Error HTTP: ${response.status} (${response.statusText}). La URL de publicación CSV es incorrecta o inaccesible.`);
                     }
                 } catch (error) {
                     if (i === maxRetries - 1) {
-                        // Lanzar un error más descriptivo sobre la falla de red
-                        throw new Error(`Error de red: Falló la conexión (Failed to fetch). Posibles causas: CORS, conexión de red inestable o bloqueo por el entorno. Mensaje original: ${error.message}`); 
+                         // Lanzar un error más descriptivo sobre la falla de red
+                         throw new Error(`Error de red: Falló la conexión (Failed to fetch). Mensaje original: ${error.message}`); 
                     }
                     // Espera exponencial: 1s, 2s, 4s...
-                    const delay = Math.pow(2, i) * 1000; 
+                    const delay = Math.pow(2, i) * 1000; 
+                    console.warn(`Intento ${i + 1} fallido. Reintentando en ${delay / 1000}s...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
             throw new Error("Máximo de reintentos alcanzado. Fallo en la conexión de red.");
         }
 
-        // Función auxiliar para mostrar errores
+        // Función auxiliar para mostrar el panel de errores detallado
         function displayError(message) {
             document.getElementById('loading').classList.add('hidden');
             
@@ -205,16 +231,17 @@
             apiURLDisplayElement.textContent = CSV_URL;
             detailedErrorPanel.classList.remove('hidden');
             
-            console.error(`ERROR DE CONEXIÓN O PROCESAMIENTO: ${message}`);
+            console.error(`ERROR CRÍTICO: ${message}`);
         }
 
         // Función para calcular las estadísticas por departamento
         function calculateDepartmentStats(data) {
             const deptMap = {};
+            const cost = COST_PER_MEMBER;
 
             data.forEach(member => {
                 // Usa el valor del departamento de la hoja o 'Sin Depto' si está vacío
-                const deptName = member.dept && member.dept !== '' ? member.dept : 'Sin Depto'; 
+                const deptName = member.dept && member.dept !== '' ? member.dept : 'Sin Depto'; 
                 
                 if (!deptMap[deptName]) {
                     deptMap[deptName] = {
@@ -227,7 +254,7 @@
                 deptMap[deptName].collected += member.monto;
                 deptMap[deptName].memberCount++;
                 // El total esperado es fijo por cada miembro
-                deptMap[deptName].expected += COST_PER_MEMBER; 
+                deptMap[deptName].expected += cost; 
             });
 
             const results = {
@@ -236,15 +263,9 @@
                 colors: []
             };
 
-            // Paleta de colores para los departamentos (hasta 6-7 colores)
+            // Paleta de colores para los departamentos
             const colorPalette = [
-                '#6366f1', // Indigo 500
-                '#10b981', // Emerald 500
-                '#f59e0b', // Amber 500
-                '#ef4444', // Red 500
-                '#06b6d4', // Cyan 500
-                '#a855f7', // Purple 500
-                '#9ca3af'  // Gray 400 (para 'Sin Depto')
+                '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#a855f7', '#9ca3af', '#3b82f6' 
             ];
             let colorIndex = 0;
 
@@ -253,8 +274,8 @@
                 let percentage = 0;
 
                 if (stats.expected > 0) {
-                     // Calcular porcentaje recaudado vs esperado
-                    percentage = (stats.collected / stats.expected) * 100; 
+                    // Calcular porcentaje recaudado vs esperado, asegurar un máximo de 100%
+                    percentage = (stats.collected / stats.expected) * 100; 
                 }
 
                 results.labels.push(deptName);
@@ -267,7 +288,99 @@
             return results;
         }
 
-        // Función para inicializar el gráfico de porcentaje de departamentos
+        // =========================================================================================
+        // RENDERIZADO Y GRÁFICOS
+        // =========================================================================================
+
+        // Función para actualizar el resumen y la barra de progreso
+        function updateSummaryUI(data) {
+            const totalMembers = data.length;
+            const collectedTotal = data.reduce((sum, m) => sum + m.monto, 0);
+            const expectedTotal = totalMembers * COST_PER_MEMBER;
+            const paidMembers = data.filter(m => m.pagado).length;
+            const pendingMembers = totalMembers - paidMembers;
+
+            // Calcular el progreso porcentual (limitado a 100%)
+            let progress = 0;
+            if (expectedTotal > 0) {
+                progress = Math.min((collectedTotal / expectedTotal) * 100, 100);
+            }
+
+            // Actualizar elementos de texto
+            document.getElementById('expectedTotal').textContent = formatCurrency(expectedTotal);
+            document.getElementById('collectedTotal').textContent = formatCurrency(collectedTotal);
+            document.getElementById('pendingMembers').textContent = pendingMembers;
+
+            // Actualizar barra de progreso
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = `${progress.toFixed(1)}%`;
+            document.getElementById('progressPercent').textContent = `${progress.toFixed(1)}% Recaudado`;
+
+            // Actualizar color de la barra
+            if (progress >= 100) {
+                 progressBar.classList.remove('bg-blue-600');
+                 progressBar.classList.add('bg-green-600');
+            } else {
+                 progressBar.classList.remove('bg-green-600');
+                 progressBar.classList.add('bg-blue-600');
+            }
+
+            // Inicializar/Actualizar gráficos
+            initChart(paidMembers, totalMembers);
+            const deptStats = calculateDepartmentStats(data);
+            initDepartmentChart(deptStats);
+        }
+
+        // Función para inicializar el gráfico de Integrantes (Dona)
+        function initChart(paidCount, totalCount) {
+            const ctx = document.getElementById('membersChart').getContext('2d');
+            
+            if (membersChartInstance) {
+                membersChartInstance.destroy();
+            }
+
+            membersChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pagado', 'Pendiente'],
+                    datasets: [{
+                        label: 'Integrantes',
+                        data: [paidCount, totalCount - paidCount],
+                        backgroundColor: ['#10B981', '#F59E0B'],
+                        hoverOffset: 4
+                    }]
+                },
+                plugins: [ChartDataLabels],
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#374151' // Gray 700
+                            }
+                        },
+                        // Usar datalabels para mostrar el porcentaje dentro del donut
+                        datalabels: {
+                            formatter: (value, context) => {
+                                const dataset = context.chart.data.datasets[0];
+                                const total = dataset.data.reduce((sum, data) => sum + data, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
+                                return percentage;
+                            },
+                            color: '#fff', // Color de fuente blanco para contraste en el donut
+                            font: {
+                                weight: 'bold',
+                                size: 14
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Función para inicializar el gráfico de porcentaje de departamentos (Barra)
         function initDepartmentChart(deptStats) {
             const ctx = document.getElementById('departmentChart').getContext('2d');
             
@@ -283,7 +396,7 @@
                         label: '% de Recaudación',
                         data: deptStats.percentages,
                         backgroundColor: deptStats.colors,
-                        borderColor: deptStats.colors,
+                        borderColor: deptStats.colors.map(c => c.replace('500', '600')), // Un poco más oscuro
                         borderWidth: 1
                     }]
                 },
@@ -294,17 +407,25 @@
                     scales: {
                         y: {
                             beginAtZero: true,
-                            max: 100,
+                            max: 105, // Para dar un poco de margen al 100% y las etiquetas
                             title: {
                                 display: true,
-                                text: 'Porcentaje (%)'
+                                text: 'Porcentaje de Recaudación (%)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + "%";
+                                }
                             }
                         },
                         x: {
-                            title: {
+                             grid: {
+                                display: false
+                             },
+                             title: {
                                 display: true,
                                 text: 'Departamento'
-                            }
+                             }
                         }
                     },
                     plugins: {
@@ -317,9 +438,9 @@
                             align: 'top',
                             formatter: function(value, context) {
                                 // Asegurarse de que el valor se muestre como porcentaje
-                                return value + '%'; 
+                                return value + '%'; 
                             },
-                            color: '#4B5563', 
+                            color: '#1F2937', // Gray 800
                             font: {
                                 weight: 'bold'
                             }
@@ -343,31 +464,94 @@
             });
         }
 
-        // Función para inicializar el gráfico de Integrantes
-        function initChart(paidCount, totalCount) {
-            const ctx = document.getElementById('membersChart').getContext('2d');
+        // Función para renderizar la tabla de miembros
+        function renderTable(data) {
+            const memberList = document.getElementById('memberList');
+            memberList.innerHTML = ''; // Limpiar la tabla
+
+            data.forEach(member => {
+                const statusText = member.pagado ? 'Pagado' : 'Pendiente';
+                const statusColor = member.pagado ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+                const row = document.createElement('tr');
+                row.className = 'member-row transition duration-150 ease-in-out';
+                row.setAttribute('data-status', member.pagado ? 'paid' : 'pending');
+                row.setAttribute('data-name', member.nombre.toLowerCase());
+                row.setAttribute('data-dept', member.dept.toLowerCase());
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${member.nombre}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${member.dept || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">
+                            ${statusText}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 text-right">${formatCurrency(member.monto)}</td>
+                `;
+                memberList.appendChild(row);
+            });
+        }
+
+        // Función para filtrar la tabla basada en la entrada de filtros
+        function filterTable() {
+            const filterNombre = document.getElementById('filterNombre').value.toLowerCase();
+            const filterDept = document.getElementById('filterDept').value.toLowerCase();
+            const filterStatus = document.getElementById('filterStatus').value;
+            const rows = document.getElementById('memberList').querySelectorAll('tr');
+
+            rows.forEach(row => {
+                const name = row.getAttribute('data-name');
+                const dept = row.getAttribute('data-dept');
+                const status = row.getAttribute('data-status');
+                
+                // Aplicar filtros
+                const matchName = name.includes(filterNombre);
+                const matchDept = dept.includes(filterDept);
+                const matchStatus = filterStatus === 'all' || status === filterStatus;
+
+                if (matchName && matchDept && matchStatus) {
+                    row.classList.remove('hidden');
+                } else {
+                    row.classList.add('hidden');
+                }
+            });
+        }
+
+        // =========================================================================================
+        // FUNCIÓN PRINCIPAL DE CARGA
+        // =========================================================================================
+
+        async function loadData() {
+            document.getElementById('loading').classList.remove('hidden');
             
-            if (membersChartInstance) {
-                membersChartInstance.destroy();
+            try {
+                // 1. Obtener datos con reintentos
+                const response = await retryFetch(CSV_URL);
+                const csvText = await response.text();
+                
+                // 2. Parsear el CSV
+                membersData = parseCSV(csvText);
+
+                if (membersData.length === 0) {
+                     throw new Error("La hoja de cálculo está vacía o solo contiene el encabezado. Por favor, agregue datos para empezar.");
+                }
+
+                // 3. Actualizar UI y gráficos
+                updateSummaryUI(membersData);
+                renderTable(membersData);
+
+                // 4. Ocultar el indicador de carga
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('detailedErrorPanel').classList.add('hidden');
+
+            } catch (error) {
+                // Manejar cualquier error durante el fetch, parseo o renderizado
+                displayError(error.message);
             }
+        }
 
-            membersChartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Pagado', 'Pendiente'],
-                    datasets: [{
-                        label: 'Integrantes',
-                        data: [paidCount, totalCount - paidCount],
-                        backgroundColor: ['#10B981', '#F59E0B'],
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                color: '#
-
+        // Iniciar la aplicación al cargar la ventana
+        window.onload = loadData;
+    </script>
+</body>
+</html>
